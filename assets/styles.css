@@ -1665,3 +1665,227 @@ footer{view-transition-name:mt-foot}
 
 /* === szary tekst dociągnięty do czytelności (WCAG 4.5 na wszystkich tłach) === */
 :root{--muted:#676669;}
+
+
+/* ============================================================
+   WARSTWA STOLARSKA (09.09.2026) — wejście „przecięta deska",
+   smaczki warsztatowe i płynniejsze przejścia.
+   Prośba Szymona: „obraz ładowania jak u innych klientów, smaczki
+   w stylu stolarstwa, seksowne animacje i smooth przejścia".
+
+   Zasady, których pilnujemy (skill `wejscie-na-strone`):
+   • kurtyna JASNA (kolor papieru) na CIEMNYM hero — kontrast robi efekt,
+   • odsłona MASKĄ/płytami, nie samym przenikaniem,
+   • trzy takty: znak → rzaz (nacięcie) → rozejście płyt,
+   • cały ruch pod 1,6 s, cztery bezpieczniki (limit czasu, klik, scroll, RM),
+   • znak leci DOKŁADNIE ten sam element co w pasku i ZAWSZE po jasnym tle
+     (płyta górna ucieka wolniejszą krzywą, więc znak jej nie wyprzedza „na zdjęciu"),
+   • skalujemy znak W DÓŁ (rozmiar na kurtynie robi width/height, nie scale).
+   ============================================================ */
+
+:root{
+  --drewno:#B98A4E;              /* trociny/rzaz — ciepły akcent TYLKO na wejściu */
+  --wj-w:320px; --wj-h:103px;    /* wartości zapasowe; realne liczy skrypt za </header> */
+  --wj-zmniejsz:.62; --wj-px:0px; --wj-py:0px;
+  --wj-baza-w:206px; --wj-baza-h:64px;
+  --wj-rzaz:56vh;
+}
+
+.wej{display:none}
+.wej-on .wej{display:block}
+.wej-on .wej-plyta,.wej-on .wej-rzaz{position:fixed;left:0;right:0;z-index:9500;pointer-events:none}
+
+/* PŁYTY — jasna „deska" ze słojami i dwoma sękami. Kryją stronę do momentu odsłony. */
+.wej-plyta{
+  background:
+    /* ⛔ bez „sęków" z radial-gradient - na zrzucie czytały się jak brudne smugi, nie jak drewno */
+    repeating-linear-gradient(90deg, rgba(122,96,58,.05) 0 1px, rgba(122,96,58,0) 1px 9px),
+    repeating-linear-gradient(90deg, rgba(35,33,30,.028) 0 2px, rgba(35,33,30,0) 2px 27px),
+    linear-gradient(180deg,#FDFCFB 0%, #F2F0EB 100%);
+  /* Obie płyty rysują TĘ SAMĄ deskę (jeden kadr 100vw x 100vh, dolna przesunięta o rzaz),
+     więc do momentu cięcia widać jeden kawałek drewna, a nie dwa sklejone panele. */
+  background-size:100vw 100vh;
+  background-repeat:no-repeat;
+  will-change:transform;
+  transition:transform .68s cubic-bezier(.66,0,.24,1) .08s;
+}
+.wej-gora{top:0;height:var(--wj-rzaz);background-position:0 0}
+.wej-dol{top:var(--wj-rzaz);bottom:0;background-position:0 calc(-1 * var(--wj-rzaz))}
+.wej-out .wej-gora{transform:translateY(-101%)}
+.wej-out .wej-dol{transform:translateY(101%)}
+
+/* RZAZ — nacięcie jedzie od lewej do prawej, przed nim punkt cięcia, spod niego lecą trociny */
+.wej-rzaz{top:var(--wj-rzaz);height:0;z-index:9501;overflow:visible}
+.wej-rzaz::before{
+  content:"";position:absolute;left:0;right:0;top:-1px;height:2px;
+  background:linear-gradient(90deg,var(--drewno),rgba(185,138,78,.35));
+  transform:scaleX(0);transform-origin:0 50%;
+  transition:transform .46s cubic-bezier(.16,1,.3,1) .14s;
+}
+.wej-gra .wej-rzaz::before{transform:scaleX(1)}
+.wej-out .wej-rzaz::before{opacity:0;transition:opacity .28s ease}
+
+.wej-pila{position:absolute;left:0;top:-5px;width:10px;height:10px;border-radius:50%;
+  background:radial-gradient(circle,#F3D6A6 0%,var(--drewno) 45%,rgba(185,138,78,0) 70%);
+  opacity:0;transform:translateX(0)}
+.wej-gra .wej-pila{animation:wejPila .46s cubic-bezier(.16,1,.3,1) .14s both}
+@keyframes wejPila{
+  0%{opacity:0;transform:translateX(0)}
+  12%{opacity:1}
+  85%{opacity:1}
+  100%{opacity:0;transform:translateX(calc(100vw - 10px))}
+}
+
+.wej-pyl{position:absolute;left:0;right:0;top:0;height:0}
+.wej-pyl i{position:absolute;top:-2px;width:4px;height:4px;border-radius:1px;
+  background:rgba(163,116,58,.95);opacity:0}
+.wej-gra .wej-pyl i{animation:wejPyl .9s cubic-bezier(.3,.7,.5,1) both}
+@keyframes wejPyl{
+  0%{opacity:0;transform:translate(0,0) rotate(0deg)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(var(--dx,6px),52px) rotate(190deg)}
+}
+.wej-pyl i:nth-child(1){left:16%;--dx:-9px;animation-delay:.20s}
+.wej-pyl i:nth-child(2){left:29%;--dx:7px; animation-delay:.26s}
+.wej-pyl i:nth-child(3){left:43%;--dx:-6px;animation-delay:.32s}
+.wej-pyl i:nth-child(4){left:57%;--dx:10px;animation-delay:.38s}
+.wej-pyl i:nth-child(5){left:71%;--dx:-8px;animation-delay:.44s}
+.wej-pyl i:nth-child(6){left:84%;--dx:5px; animation-delay:.50s}
+
+/* ZNAK — ten sam obraz co w pasku: wyłania się spod maski, ostrzeje, po odsłonie
+   wraca na swoje miejsce w nawigacji (scale ZAWSZE < 1, więc nigdy się nie rozmywa). */
+.wej-znak .brand{width:var(--wj-baza-w);height:var(--wj-baza-h);flex:0 0 auto}
+.wej-znak .brand-logo{
+  position:fixed;left:50%;top:50%;z-index:9502;
+  width:var(--wj-w);height:var(--wj-h);max-width:none;
+  transform:translate(-50%,-50%) scale(1.045);
+  clip-path:inset(0 100% 0 0);
+  filter:blur(14px);
+  transition:transform .72s cubic-bezier(.16,.84,.44,1),
+             clip-path .5s cubic-bezier(.16,1,.3,1),
+             filter .5s cubic-bezier(.16,1,.3,1);
+}
+.wej-gra .brand-logo{clip-path:inset(0 0 0 0);filter:blur(0);transform:translate(-50%,-50%) scale(1)}
+.wej-out .brand-logo{
+  transform:translate(calc(-50% + var(--wj-px)),calc(-50% + var(--wj-py))) scale(var(--wj-zmniejsz));
+}
+/* ⚠️ Pasek ma position:sticky + z-index:50, czyli WŁASNY kontekst nakładania - bez podniesienia
+   całego paska lecący znak zostaje POD kurtyną i wejście wygląda na puste (zmierzone 09.09).
+   iOS: rozmycie tła paska potrafi się narysować NAD lecącym znakiem - na czas wejścia gasimy. */
+.wej-on .nav{
+  z-index:9502;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  background:transparent;border-bottom-color:transparent;box-shadow:none;
+}
+.wej-on .nav-links,.wej-on .nav-toggle{opacity:0}
+/* Tło paska wraca JESZCZE POD PŁYTĄ (0,26 s po starcie odsłony, płyta schodzi 0,76 s) —
+   dzięki temu znak nigdy nie ląduje na ciemnym zdjęciu. */
+.wej-out .nav{background:var(--paper);transition:background .28s ease .26s}
+.wej-out .nav-links,.wej-out .nav-toggle{animation:stolPokazNav .5s ease .34s both}
+@keyframes stolPokazNav{from{opacity:0}to{opacity:1}}
+
+/* Animacje TŁA, które grają pod kurtyną, gasimy klasą TRWAŁĄ — inaczej pierwszy ekran
+   wychodzi spod płyt wyblakły (albo puszcza się drugi raz po zdjęciu klas). */
+.bez-wejscia-tla .hero-cine>img{animation:none}
+
+@media (prefers-reduced-motion:reduce){
+  .wej{display:none !important}
+}
+
+
+/* ---------- SMACZEK 1: MIARKA STOLARSKA U GÓRY ----------
+   Pasek postępu czytania dostaje podziałkę jak calówka - wypełnia się w miarę
+   przewijania. Kreski są stałe, kolorowy pasek jedzie po nich. */
+.stol-miarka{
+  position:fixed;top:0;left:0;right:0;height:3px;z-index:59;pointer-events:none;
+  background:repeating-linear-gradient(90deg,
+    rgba(35,33,30,.20) 0 1px, rgba(35,33,30,0) 1px 7px,
+    rgba(35,33,30,.10) 7px 8px, rgba(35,33,30,0) 8px 14px);
+  opacity:.6;
+}
+.mt-progress{height:3px}
+/* bez ruchu pasek postępu znika (base, linia 1401) - podziałka bez niego byłaby
+   samotną kreską pod paskiem, więc chowamy ją razem z nim */
+@media (prefers-reduced-motion:reduce){
+  .stol-miarka{display:none}
+}
+
+/* ---------- SMACZEK 2: POLITURA NA KAFLACH ----------
+   Po najechaniu po zdjęciu przejeżdża pasmo światła - tak jak po świeżo
+   polakierowanym froncie. Dokładka do standardowego zoomu, nie zamiast niego.
+   ⛔ NA BRAMKACH IDZIE ::before, NIE ::after - `.gateway::after` (linia 518) to ciemny
+   welon pod białym tytułem kafla. Przepisanie go politurą skasowałoby welon i biały
+   napis siadłby na jasnym zdjęciu (złapane 09.09.2026 przed commitem). */
+.tile::after,.gateway::before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(105deg,
+    rgba(255,255,255,0) 38%, rgba(255,255,255,.30) 50%, rgba(255,255,255,0) 62%);
+  transform:translateX(-120%);
+  opacity:0;
+}
+@media (hover:hover){
+  .tile:hover::after,.gateway:hover::before{
+    opacity:1;transform:translateX(120%);
+    transition:transform 1.15s cubic-bezier(.16,.84,.44,1),opacity .2s linear;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .tile::after,.gateway::before{display:none}
+}
+
+/* ---------- SMACZEK 3: RYSA OŁÓWKA POD NAGŁÓWKIEM ----------
+   Kreska pod nagłówkiem dojeżdża jak pociągnięcie ołówkiem stolarskim:
+   ma grafitową fakturę i lekko ścięty koniec. */
+.head h2::after{
+  height:2px;
+  background:linear-gradient(90deg,var(--ink) 0%,var(--ink) 62%,rgba(35,33,30,.35) 100%);
+  transition:width 1.05s cubic-bezier(.16,1,.3,1) .18s;
+}
+.head.reveal.in h2::after,.head.center.reveal.in h2::after{width:74px}
+
+/* ---------- SMACZEK 4: „WBIJANIE DESKI" W PASKU HASEŁ ----------
+   Hasła nie pojawiają się - wchodzą kolejno z boku i przytrzaskują się o kreskę
+   akcentu, która dobija do pełnej wysokości. Kolejność robi stagger z warstwy ruchu. */
+.mt-on .strip .item{
+  position:relative;
+  --wb-d:calc(var(--i,0) * 90ms);
+  transform:none;                 /* zamiast pionowego wjazdu z .reveal - deska wchodzi z boku */
+  translate:-16px 0;
+  border-left-color:transparent;  /* kreska akcentu dobija dopiero na końcu (::before) */
+  transition:opacity .5s var(--mt-ease) var(--wb-d,0s),
+             translate .55s cubic-bezier(.2,1.2,.45,1) var(--wb-d,0s);
+}
+.mt-on .strip .item.in{translate:0 0}
+.mt-on .strip .item::before{
+  content:"";position:absolute;left:-2px;top:50%;bottom:50%;width:2px;
+  background:var(--accent);
+  transition:top .42s cubic-bezier(.16,1,.3,1) calc(var(--wb-d,0s) + .12s),
+             bottom .42s cubic-bezier(.16,1,.3,1) calc(var(--wb-d,0s) + .12s);
+}
+.mt-on .strip .item.in::before{top:0;bottom:0}
+@media (prefers-reduced-motion:reduce){
+  .mt-on .strip .item{translate:0 0}
+  .mt-on .strip .item::before{top:0;bottom:0}
+}
+
+/* ---------- SMOOTH: przejścia między podstronami ----------
+   (scroll-behavior:smooth siedzi już w rdzeniu, razem z wyłącznikiem
+   dla prefers-reduced-motion - nie dublujemy go tutaj.) */
+@media (prefers-reduced-motion:no-preference){
+  ::view-transition-old(root){animation:stolVtOut .24s ease both}
+  ::view-transition-new(root){animation:stolVtIn .46s cubic-bezier(.16,1,.3,1) both}
+  @keyframes stolVtOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-8px)}}
+  @keyframes stolVtIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+}
+
+
+/* ---------- HOVER BEZ ODZIEDZICZONEGO OPÓŹNIENIA ----------
+   `.reveal` niesie `transition-delay` stagger'a (i * 70 ms) i ZOSTAJE on na elemencie
+   na zawsze - najechanie na trzeci kafel reagowało dopiero po 280 ms i wyglądało jak
+   zacięcie strony (bramka wyglądu, 09.09.2026). Gdy karta już osiadła (`mt-settled`
+   dokłada warstwa ruchu 1,6 s po odsłonie), zerujemy opóźnienie.
+   Selektory muszą przebić `.gallery .reveal:nth-child(n)` z warstwy ruchu. */
+.gallery .reveal.mt-settled:nth-child(n),
+.gateways .reveal.mt-settled:nth-child(n),
+.svc-grid .reveal.mt-settled:nth-child(n),
+.reveal.mt-settled,.mt-ph.mt-settled{transition-delay:0s}

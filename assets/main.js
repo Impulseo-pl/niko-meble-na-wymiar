@@ -237,7 +237,17 @@
     // h1 pierwszego ekranu (hero) — jedyny ruch, jaki hero dostaje
     var h1 = document.querySelector('section h1, header h1, .hero h1, .hero-cine h1');
     if (h1 && !splitLines(h1)) { h1.classList.add('mt-fade'); }
-    if (h1) { requestAnimationFrame(function () { h1.classList.add('mt-in'); }); }
+    // Gdy gra wejście („przecięta deska"), kaskada nagłówka CZEKA na zdjęcie kurtyny —
+    // inaczej cały ruch odbywa się pod płytami i klient widzi już gotowy, statyczny tekst.
+    if (h1) {
+      if (document.documentElement.classList.contains('wej-on')) {
+        var puscH1 = function () { requestAnimationFrame(function () { h1.classList.add('mt-in'); }); };
+        document.addEventListener('wejscie:koniec', puscH1, { once: true });
+        setTimeout(puscH1, 3200);                       // bezpiecznik: wejście padło → tekst i tak wchodzi
+      } else {
+        requestAnimationFrame(function () { h1.classList.add('mt-in'); });
+      }
+    }
 
     // nagłówki sekcji — wchodzą, gdy sekcja pojawia się w oknie
     var heads = all('.head h2').filter(function (h) { return !firstScreen(h); });
@@ -501,6 +511,13 @@
   /* ---------- 6) PASEK POSTĘPU (tylko gdy przeglądarka umie scroll-driven) ---------- */
   function prepProgress() {
     if (!(window.CSS && CSS.supports && CSS.supports('animation-timeline', 'scroll()'))) return;
+    // MIARKA STOLARSKA (09.09.2026): pod paskiem postępu leży stała podziałka jak na calówce,
+    // więc przewijanie czyta się jak odmierzanie długości, a nie jak zwykły pasek ładowania.
+    var miarka = document.createElement('div');
+    miarka.className = 'stol-miarka';
+    miarka.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(miarka);
+
     var bar = document.createElement('div');
     bar.className = 'mt-progress';
     bar.setAttribute('aria-hidden', 'true');

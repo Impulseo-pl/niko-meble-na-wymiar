@@ -21,13 +21,36 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/styles.css?v=0fdbaa91">
+<link rel="preload" as="image" href="img/logo-znak.png" fetchpriority="high">
+<link rel="stylesheet" href="assets/styles.css?v=stol0909">
+<script>
+/* WEJŚCIE „przecięta deska" - decyzja PRZED pierwszym malowaniem (bez defer!).
+   Gra raz na wizytę; ?intro w adresie = zagraj ponownie (do pokazywania klientowi). */
+(function(){
+  try{
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var znowu = location.search.indexOf('intro') > -1;
+    if (!znowu && sessionStorage.getItem('niko-wejscie') === '1') return;
+    sessionStorage.setItem('niko-wejscie','1');
+    document.documentElement.className += ' wej-on bez-wejscia-tla';
+  }catch(e){}
+})();
+</script>
 </head>
 <body>
 
+<div class="wej" aria-hidden="true">
+  <div class="wej-plyta wej-gora"></div>
+  <div class="wej-plyta wej-dol"></div>
+  <div class="wej-rzaz">
+    <i class="wej-pila"></i>
+    <span class="wej-pyl"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  </div>
+</div>
+
 <header class="nav">
   <div class="wrap nav-inner">
-    <a class="brand brand-has-logo" href="index.html"><img class="brand-logo" src="img/logo.jpg" alt="NIKO Meble na wymiar" width="720" height="720" decoding="async"></a>
+    <a class="brand brand-has-logo" href="index.html"><img class="brand-logo" src="img/logo-znak.png" alt="NIKO Meble na wymiar" width="679" height="219" decoding="async"></a>
     <nav class="nav-links">
       <a href="index.html" class="active" aria-current="page">Strona główna</a>
       <a href="realizacje.html">Realizacje</a>
@@ -39,6 +62,93 @@
     <button class="nav-toggle" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
 </header>
+<script>
+/* Reżyseria wejścia. Takty: znak spod maski (0,5 s) -> rzaz z trocinami (0,46 s)
+   -> rozejście płyt (0,68 s) + przelot znaku do paska (0,72 s).
+   Bezpieczniki: sufit czasu, klik/scroll/klawisz, brak znaku, prefers-reduced-motion. */
+(function(){
+  var h = document.documentElement;
+  if (h.className.indexOf('wej-on') < 0) return;
+  var wej = document.querySelector('.wej');
+  var obraz = document.querySelector('.brand-logo');
+  var skonczone = false, ruszylo = false;
+
+  function sprzataj(){
+    h.classList.remove('wej-on','wej-znak','wej-gra','wej-out');
+    if (wej) wej.style.display = 'none';
+    try { document.dispatchEvent(new CustomEvent('wejscie:koniec')); } catch(e){}
+  }
+  if (!wej || !obraz) { sprzataj(); return; }
+
+  /* POMIAR na znaku stojącym jeszcze w pasku - stąd biorą się cel lotu i skala.
+     Skalujemy wyłącznie W DÓŁ (rozmiar na kurtynie robi width/height), inaczej
+     na telefonie znak wychodzi rozmyty. */
+  var r = obraz.getBoundingClientRect();
+  if (!r.width || !r.height) { sprzataj(); return; }
+  var PLIK_W = 679, PLIK_H = 219;
+  var sufitPx = PLIK_W / Math.min(window.devicePixelRatio || 1, 3);
+  var cel = (window.innerWidth < 680) ? Math.min(window.innerWidth * 0.72, 320)
+                                      : Math.min(window.innerWidth * 0.42, 480);
+  cel = Math.max(r.width, Math.min(cel, sufitPx));
+  var celH = Math.round(cel * PLIK_H / PLIK_W);
+  h.style.setProperty('--wj-w', Math.round(cel) + 'px');
+  h.style.setProperty('--wj-h', celH + 'px');
+  h.style.setProperty('--wj-zmniejsz', (r.width / cel).toFixed(4));
+  h.style.setProperty('--wj-px', Math.round(r.left + r.width / 2 - window.innerWidth / 2) + 'px');
+  h.style.setProperty('--wj-py', Math.round(r.top + r.height / 2 - window.innerHeight / 2) + 'px');
+  h.style.setProperty('--wj-baza-w', Math.round(r.width) + 'px');
+  h.style.setProperty('--wj-baza-h', Math.round(r.height) + 'px');
+  h.style.setProperty('--wj-rzaz', Math.round(window.innerHeight / 2 + celH / 2 + 44) + 'px');
+  h.classList.add('wej-znak');
+
+  var start = 0, MIN = 560, SUFIT = 880, zaladowane = false;
+  function heroGotowe(){
+    var im = document.querySelector('.hero-cine > img');
+    return !!(im && im.complete && im.naturalWidth > 0);
+  }
+  function koniec(){
+    if (skonczone) return;
+    skonczone = true;
+    h.classList.add('wej-out');
+    setTimeout(sprzataj, 900);
+  }
+  function moze(){
+    if (skonczone) return;
+    if (Date.now() - start >= MIN && (heroGotowe() || zaladowane)) koniec();
+    else setTimeout(moze, 70);
+  }
+  window.addEventListener('load', function(){ zaladowane = true; });
+
+  function graj(){
+    if (skonczone) return;
+    ruszylo = true;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      start = Date.now();
+      h.classList.add('wej-gra');
+      moze();
+      setTimeout(koniec, SUFIT);      /* sufit liczony wstecz z budżetu 1,6 s */
+      setTimeout(sprzataj, 3000);     /* twardy bezpiecznik */
+    }); });
+  }
+  function odpusc(){ if (ruszylo || skonczone) return; skonczone = true; sprzataj(); }
+
+  /* Kurtyna nie rusza, dopóki znak nie jest POBRANY I ZDEKODOWANY - inaczej pierwszy
+     takt gra na pustym miejscu, a logo doskakuje w połowie przelotu. */
+  function pobrane(){ return obraz.complete && obraz.naturalWidth > 0; }
+  function zacznij(){ if (obraz.decode) obraz.decode().then(graj, graj); else graj(); }
+  if (pobrane()) zacznij();
+  else {
+    obraz.addEventListener('load', zacznij);
+    obraz.addEventListener('error', odpusc);
+    setTimeout(function(){ pobrane() ? zacznij() : odpusc(); }, 1400);
+  }
+
+  ['click','wheel','touchstart','keydown'].forEach(function(t){
+    window.addEventListener(t, function(){ if (ruszylo) koniec(); else odpusc(); },
+                            { passive:true, once:true });
+  });
+})();
+</script>
 
 <main>
 <section class="hero-cine">
@@ -180,6 +290,6 @@
 <div class="sticky-reserve"><a class="sr-book" href="kontakt.html">Zapytaj o wycenę</a><a class="sr-call" href="tel:+48691945354" aria-label="Zadzwoń"><svg class="ico-tel" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.6 10.8a15.5 15.5 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.6.58 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.58 3.6a1 1 0 0 1-.25 1l-2.23 2.2Z" fill="currentColor"/></svg></a></div>
 <div class="demo-wazne" data-do="2026-09-07" data-cykl="3" hidden><svg class="dw-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.6" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.2V12l3.3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="dw-txt"></span></div>
 
-<script src="assets/main.js"></script>
+<script src="assets/main.js?v=stol0909"></script>
 </body>
 </html>
